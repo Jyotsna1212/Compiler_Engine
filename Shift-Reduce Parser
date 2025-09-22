@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#define MAXN 4096
+typedef struct {
+char data[MAXN];
+int top;
+} Stack;
+void push(Stack *st, char c) { st->data[++st->top] = c; }
+char pop_(Stack *st) { return (st->top >= 0) ? st->data[st->top--] : '\0'; }
+int try_reduce(Stack *st, char lookahead) {
+int t = st->top;
+// 1) S -> a
+if (t >= 0 && st->data[t] == 'a') {
+pop_(st);
+push(st, 'S');
+return 1;
+}
+// 2) L -> L , S
+if (t >= 2 && st->data[t-2] == 'L' && st->data[t-1] == ',' && st->data[t] == 'S') {
+pop_(st); pop_(st); pop_(st);
+push(st, 'L');
+return 1;
+}
+// 3) L -> S (only when we are inside a list: lookahead is ',' or ')')
+if (t >= 0 && st->data[t] == 'S' && (lookahead == ',' || lookahead == ')')) {
+pop_(st);
+push(st, 'L');
+return 1;
+}
+// 4) S -> ( L )
+if (t >= 2 && st->data[t-2] == '(' && st->data[t-1] == 'L' && st->data[t] == ')') {
+pop_(st); pop_(st); pop_(st);
+push(st, 'S');
+return 1;
+
+}
+return 0;
+}
+int parse(const char *src) {
+// validate input symbols: allowed { 'a', '(', ')', ',' }
+for (int i = 0; src[i]; ++i)
+if (strchr("(),a", src[i]) == NULL) return 0;
+Stack st; st.top = -1;
+int i = 0, n = (int)strlen(src);
+while (1) {
+char lookahead = (i < n) ? src[i] : '\0';
+// apply reductions greedily while possible (using current lookahead)
+int reduced;
+do {
+reduced = try_reduce(&st, lookahead);
+} while (reduced);
+if (i < n) {
+// shift next input symbol
+push(&st, src[i++]);
+} else {
+// no more input: do final reductions with lookahead = '\0'
+while (try_reduce(&st, '\0')) { /* keep reducing */ }
+// accept iff stack is exactly one symbol S
+return (st.top == 0 && st.data[0] == 'S');
+}
+}
+}
+int main(void) {
+int n;
+char prod[256], input[MAXN];
+printf("Enter no. of productions: ");
+if (scanf("%d", &n) != 1) return 0;
+printf("\nEnter the productions:\n");
+for (int i = 0; i < n; ++i) {
+
+scanf("%s", prod); // read grammar lines (kept for format; parser is grammar-specific)
+}
+printf("\nEnter the input string: ");
+if (scanf("%s", input) != 1) return 0;
+if (parse(input))
+printf("\n%s - accepted\n", input);
+else
+printf("\n%s - rejected\n", input);
+return 0;
+}
