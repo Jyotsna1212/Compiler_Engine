@@ -1,0 +1,124 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAXLINE 256
+
+// Trim leading and trailing whitespace (in-place)
+char *trim(char *s) {
+    char *p = s;
+    while (isspace((unsigned char)*p)) p++;
+    if (p != s) memmove(s, p, strlen(p) + 1);
+    char *end = s + strlen(s) - 1;
+    while (end >= s && isspace((unsigned char)*end)) { *end = '\0'; end--; }
+    return s;
+}
+
+// Remove all spaces from a string (in-place)
+void remove_spaces(char *s) {
+    char *d = s;
+    for (char *p = s; *p; ++p) {
+        if (!isspace((unsigned char)*p)) *d++ = *p;
+    }
+    *d = '\0';
+}
+
+// find first operator + - * / in rhs, return its index or -1
+int find_operator_pos(const char *s) {
+    for (int i = 0; s[i]; ++i) {
+        if (s[i] == '+' || s[i] == '-' || s[i] == '*' || s[i] == '/') return i;
+    }
+    return -1;
+}
+
+int main(void) {
+    char line[MAXLINE];
+    int regCount = 0;
+
+    printf("Enter the set of intermediate code (terminated by exit):\n");
+
+    // store lines? not necessary; print header then process on the fly
+    char input[MAXLINE][MAXLINE];
+    int nlines = 0;
+    while (1) {
+        if (!fgets(line, sizeof(line), stdin)) break;
+        trim(line);
+        if (strlen(line) == 0) continue;
+        // convert possible Windows CR
+        if (line[strlen(line)-1] == '\r') line[strlen(line)-1] = '\0';
+        if (strcmp(line, "exit") == 0) break;
+        strncpy(input[nlines++], line, MAXLINE-1);
+        input[nlines-1][MAXLINE-1] = '\0';
+    }
+
+    printf("\ntarget code generation\n");
+    printf("************************\n\n");
+
+    for (int i = 0; i < nlines; ++i) {
+        char buf[MAXLINE];
+        strncpy(buf, input[i], sizeof(buf)-1);
+        buf[sizeof(buf)-1] = '\0';
+        trim(buf);
+        if (strlen(buf) == 0) continue;
+        char *eq = strchr(buf, '=');
+        if (!eq) {
+            // invalid line, skip
+            continue;
+        }
+        // split lhs and rhs
+        *eq = '\0';
+        char lhs[MAXLINE], rhs[MAXLINE];
+        strncpy(lhs, buf, sizeof(lhs)-1); lhs[sizeof(lhs)-1] = '\0';
+        strncpy(rhs, eq + 1, sizeof(rhs)-1); rhs[sizeof(rhs)-1] = '\0';
+        trim(lhs);
+        trim(rhs);
+
+        char rhs_nospace[MAXLINE];
+        strncpy(rhs_nospace, rhs, sizeof(rhs_nospace)-1); rhs_nospace[sizeof(rhs_nospace)-1] = '\0';
+        remove_spaces(rhs_nospace);
+
+        int opos = find_operator_pos(rhs_nospace);
+        char reg[8];
+        snprintf(reg, sizeof(reg), "R%d", regCount++);
+
+        if (opos >= 0) {
+            // binary operation
+            char op = rhs_nospace[opos];
+            char op1[MAXLINE], op2[MAXLINE];
+            // split
+            strncpy(op1, rhs_nospace, opos); op1[opos] = '\0';
+            strncpy(op2, rhs_nospace + opos + 1, sizeof(op2)-1); op2[sizeof(op2)-1] = '\0';
+            trim(op1); trim(op2);
+
+        
+            printf("Mov %s,%s\n", op1, reg);
+
+           
+            if (op == '*') {
+                printf("MUL %s,%s\n", op2, reg);
+            } else if (op == '+') {
+                printf("ADD %s,%s\n", op2, reg);
+            } else if (op == '-') {
+                printf("SUB %s,%s\n", op2, reg);
+            } else if (op == '/') {
+                printf("DIV %s,%s\n", op2, reg);
+            } else {
+                // unknown operator: skip
+            }
+
+        
+            printf("Mov %s,%s\n\n", reg, lhs);
+
+        } else {
+            char src[MAXLINE];
+            strncpy(src, rhs_nospace, sizeof(src)-1); src[sizeof(src)-1] = '\0';
+            trim(src);
+
+            printf("Mov %s,%s\n", src, reg);
+            printf("Mov %s,%s\n\n", reg, lhs);
+        }
+    }
+
+    return 0;
+}
