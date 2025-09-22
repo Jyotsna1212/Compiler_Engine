@@ -1,0 +1,66 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+char input[100];
+int i = 0;
+void S();
+void A();
+void Aprime();
+void B();
+// PRODUCTION RULES
+//S -> a A B e
+//A -> b A'
+//A' -> b c A' | ε
+//B -> d
+
+void error() {
+printf("Rejected\n");
+exit(0);
+}
+void S() {
+if (input[i] == 'a') {
+i++;
+A();
+B();
+if (input[i] == 'e') {
+i++;
+if (input[i] == '\0') {
+printf("Accepted\n");}
+else {
+error();}
+}
+else {
+error();}
+}
+else {
+
+error();}
+}
+void A() {
+if (input[i] == 'b')
+{ i++;
+Aprime();}
+else
+{
+error();}
+}
+void Aprime() {
+if (input[i] == 'b' && input[i+1] == 'c') {
+i += 2; // consume "bc"
+Aprime();
+}
+// ε → do nothing
+}
+void B() {
+if (input[i] == 'd') {
+i++;
+} else {
+error();
+}
+}
+int main() {
+printf("Enter string: ");
+scanf("%s", input);
+S();
+return 0;
+}
